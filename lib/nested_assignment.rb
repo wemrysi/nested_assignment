@@ -8,7 +8,7 @@ module NestedAssignment
       
       alias_method_chain :create_or_update, :associated
       alias_method_chain :valid?, :associated
-#      alias_method_chain :changed?, :associated
+      alias_method_chain :changed?, :associated
     end
   end
 
