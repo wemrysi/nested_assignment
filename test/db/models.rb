@@ -11,13 +11,11 @@ module PluginTestModels
   end
   
   class User < ActiveRecord::Base
-    has_one                 :avatar
-    belongs_to              :manager
-    has_many                :tasks
-    has_many                :tags, :through => :tasks
-    has_and_belongs_to_many :groups
-    
-    accessible_associations :avatar, :manager, :tasks, :tags, :groups
+    has_one                 :avatar, :accessible => true
+    belongs_to              :manager, :accessible => true
+    has_many                :tasks, :accessible => true
+    has_many                :tags, :through => :tasks, :accessible => true
+    has_and_belongs_to_many :groups, :accessible => true
     
     validates_presence_of :name
   end

@@ -6,6 +6,22 @@ module NestedAssignment
     base.class_eval do
       extend ClassMethods
       
+      [
+        :valid_keys_for_has_many_association,
+        :valid_keys_for_has_one_association,
+        :valid_keys_for_belongs_to_association,
+        :valid_keys_for_has_and_belongs_to_many_association 
+      ].each do |method|
+        send("#{method}=".to_sym, send(method) << :accessible)
+      end
+
+      class << self
+        alias_method_chain :has_many, :accessible
+        alias_method_chain :has_one, :accessible
+        alias_method_chain :belongs_to, :accessible
+        alias_method_chain :has_and_belongs_to_many, :accessible
+      end
+
       alias_method_chain :create_or_update, :associated
       alias_method_chain :valid?, :associated
       alias_method_chain :changed?, :associated
@@ -13,45 +29,61 @@ module NestedAssignment
   end
 
   module ClassMethods
-    # Parallels attr_accessible. Could easily trigger from an association option (e.g. :accessible => true)
-    # or even from attr_accessible itself (cool!).
-    def accessible_associations(*associations)
-      associations.each do |name|
-      
-        # singular associations
-        if [:belongs_to, :has_one].include? self.reflect_on_association(name).macro
-          define_method("#{name}_params=") do |row|
-            assoc = self.send(name)
-            
-            if row[:_delete].to_s == "1"
-              [assoc].detect{|r| r.id == row[:id].to_i}._delete = true if row[:id]
-            else
-              record = row[:id].blank? ? assoc.build : [assoc].detect{|r| r.id == row[:id].to_i}
-              record.attributes = row.except(:id, :_delete)
-            end
-          end
-        # plural collections
-        else
-          define_method("#{name}_params=") do |hash|
-            assoc = self.send(name)
-            
-            hash.values.each do |row|
-              if row[:_delete].to_s == "1"
-                assoc.detect{|r| r.id == row[:id].to_i}._delete = true if row[:id]
-              else
-                record = row[:id].blank? ? assoc.build : assoc.detect{|r| r.id == row[:id].to_i}
-                record.attributes = row.except(:id, :_delete)
-              end
-            end
-          end
-        end
-                
-      end
+    def has_many_with_accessible(association_id, options = {}, &extension)
+      has_many_without_accessible(association_id, options, &extension)
+      multiple_associated_params_writer_method(association_id) if options[:accessible]
     end
-  
+
+    def has_one_with_accessible(association_id, options = {})
+      has_one_without_accessible(association_id, options)
+      single_associated_params_writer_method(association_id) if options[:accessible]
+    end
+
+    def belongs_to_with_accessible(association_id, options = {})
+      belongs_to_without_accessible(association_id, options)
+      single_associated_params_writer_method(association_id) if options[:accessible]
+    end
+
+    def has_and_belongs_to_many_with_accessible(association_id, options = {}, &extension)
+      has_and_belongs_to_many_without_accessible(association_id, options, &extension)
+      multiple_associated_params_writer_method(association_id) if options[:accessible]
+    end
+
     def association_names
       @association_names ||= reflect_on_all_associations.map(&:name)
     end
+
+    private
+
+      def single_associated_params_writer_method(association_name)
+        method_name = "#{association_name}_params=".to_sym
+        define_method(method_name) do |attrs|
+          assoc = self.send(association_name.to_sym)
+          
+          if attrs[:_delete].to_s == "1"
+            [assoc].detect { |a| a.id == attrs[:id].to_i }._delete = true if attrs[:id]
+          else
+            record = attrs[:id].blank? ? assoc.build : [assoc].detect { |a| a.id == attrs[:id].to_i }
+            record.attributes = attrs.except(:id, :_delete)
+          end
+        end
+      end
+
+      def multiple_associated_params_writer_method(association_name)
+        method_name = "#{association_name}_params=".to_sym
+        define_method(method_name) do |hash|
+          assocs = self.send(association_name.to_sym)
+          
+          hash.values.each do |attrs|
+            if attrs[:_delete].to_s == "1"
+              assocs.detect { |a| a.id == attrs[:id].to_i }._delete = true if attrs[:id]
+            else
+              record = attrs[:id].blank? ? assocs.build : assocs.detect { |a| a.id == attrs[:id].to_i }
+              record.attributes = attrs.except(:id, :_delete)
+            end
+          end
+        end
+      end
   end
   
   # marks the (associated) record to be deleted in the next deep save
