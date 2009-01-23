@@ -53,6 +53,10 @@ module NestedAssignment
       @association_names ||= reflect_on_all_associations.map(&:name)
     end
 
+    def reflect_on_accessible_associations(macro = nil)
+      reflect_on_all_associations(macro).select { |reflection| reflection.options[:accessible] }
+    end
+
     private
 
       def single_associated_params_writer_method(association_name)
