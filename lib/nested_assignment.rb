@@ -58,7 +58,6 @@ module NestedAssignment
     end
 
     private
-
       def single_associated_params_writer_method(association_name)
         method_name = "#{association_name}_params=".to_sym
         define_method(method_name) do |attrs|
@@ -99,19 +98,19 @@ module NestedAssignment
   # afterwards.
   def valid_with_associated?(*args)
     without_recursion(:valid?) do
-      [modified_associated.all?(&:valid?), valid_without_associated?(*args)].all?
+      [ modified_associated.all?(&:valid?), valid_without_associated?(*args) ].all?
     end
   end
   
   # deep saving of any new, changed, or deleted records.
   def create_or_update_with_associated(*args)
-    without_recursion(:create_or_update){
-    self.class.transaction do
-      create_or_update_without_associated(*args) &&
-        modified_associated.all?{|a| a.save(*args)} &&
-        deletable_associated.all?{|a| a.destroy}
+    without_recursion(:create_or_update) do
+      self.class.transaction do
+        create_or_update_without_associated(*args) &&
+        modified_associated.all? { |a| a.save(*args) } &&
+        deletable_associated.all? { |a| a.destroy }
+      end
     end
-    }
   end
   
   # Without this, we may not save deeply nested and changed records.
@@ -128,32 +127,30 @@ module NestedAssignment
   end
   
   protected
-  
-  def deletable_associated
-    instantiated_associated.select{|a| a._delete}
-  end
+    def deletable_associated
+      instantiated_associated.select { |a| a._delete }
+    end
 
-  def modified_associated
-    instantiated_associated.select{|a| a.changed? and !a.new_record? and not a.id_changed?}
-  end
+    def modified_associated
+      instantiated_associated.select { |a| a.changed? and !a.new_record? and not a.id_changed? }
+    end
 
-  def changed_associated
-    instantiated_associated.select{|a| a.changed?}
-  end
+    def changed_associated
+      instantiated_associated.select { |a| a.changed? }
+    end
 
-  def instantiated_associated
-    instantiated = []
-    self.class.association_names.each do |name|
-      ivar = "@#{name}"
-      if association = instance_variable_get(ivar)
-        if association.target.is_a?(Array)
-          instantiated.concat association.target
-        elsif association.target
-          instantiated << association.target
+    def instantiated_associated
+      instantiated = []
+      self.class.association_names.each do |name|
+        ivar = "@#{name}"
+        if association = instance_variable_get(ivar)
+          if association.target.is_a?(Array)
+            instantiated.concat(association.target)
+          elsif association.target
+            instantiated << association.target
+          end
         end
       end
+      instantiated
     end
-    instantiated
-  end
-
 end
