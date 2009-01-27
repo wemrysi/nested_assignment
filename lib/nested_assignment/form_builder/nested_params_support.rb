@@ -38,7 +38,7 @@ module NestedAssignment
               @template.fields_for(record_name, record, *args) do |form_builder|
                 block.arity == 2 ? block.call(form_builder, record) : block.call(form_builder)
               end
-            end.join
+            end
           end
         end
     end
