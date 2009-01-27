@@ -5,6 +5,7 @@ require 'test/unit'
 require 'rubygems'
 require 'active_record'
 require 'active_record/fixtures'
+require 'action_view'
 
 # load the code-to-be-tested
 ActiveSupport::Dependencies.load_paths << File.dirname(__FILE__) + '/../lib/'
